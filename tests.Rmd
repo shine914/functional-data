@@ -1,0 +1,77 @@
+---
+title: "classic test"
+author: "Shan Lu"
+date: "2015年12月10日"
+output: word_document
+---
+数据集mtcars描述
+Motor Trend Car Road Tests
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models).
+
+download url:https://vincentarelbundock.github.io/Rdatasets/datasets.html
+
+载入数据
+```{r}
+setwd("/Users/shine/Documents/funcational\ data")
+mtcars<-read.csv("mtcars.csv")
+vars<-c("mpg","hp","wt")
+head(mtcars[vars])
+```
+
+计算描述性统计量
+```{r}
+##通过summary
+summary(mtcars[vars])
+##通过reshape包
+library(reshape)
+dstats<-function(x)(c(n=length(x), mean=mean(x), sd=sd(x)))
+dfm<-melt(mtcars, measure.vars=c("mpg", "hp", "wt"), id.vars=c("am","cyl"))
+cast(dfm, am +cyl +variable ~ .,dstats)
+```
+
+频数表和列联表
+```{r}
+library(vcd)
+head(Arthritis)##数据集来自vcd包
+#一维列联表
+mytable<-with(Arthritis, table(Improved))
+mytable
+##用prop.table()将这些频数转化为比例值/prop.table()*100转化为百分比
+prop.table(mytable)
+prop.table(mytable)*100
+
+##二维列联表
+##格式table(A, B),其中A是行变量，B是列变量
+##xtabs(~A+B, data=mydata),AB是要进行交叉分类的变量
+mytable<-xtabs(~Treatment+ Improved, data= Arthritis)
+mytable
+#使用CrossTable生成二维列联表
+library(gmodels)
+CrossTable(Arthritis$Treatment, Arthritis$Improved)
+```
+
+独立性检验
+
+```{r}
+##卡方独立性检验
+library(vcd)
+mytable<-xtabs(~Treatment+ Improved, data= Arthritis)
+chisq.test(mytable)##治疗情况和改善情况不独立
+mytable<-xtabs(~Improved+ Sex, data=Arthritis)
+chisq.test(mytable)##性别和改善情况独立
+```
+
+
+t检验
+```{r}
+library(MASS)
+head(UScrime)
+t.test(Prob~ So, data=UScrime)#假设方差不等的双侧检验
+##拒绝南方各州和非南方各州拥有相同监禁概率的假设
+```
+
+方差分析
+```{r}
+
+```
