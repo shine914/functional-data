@@ -1,0 +1,51 @@
+---
+title: "ali-m-a"
+author: "Shan Lu"
+date: "2015年12月22日"
+output: html_document
+---
+
+```{r}
+library(xlsx) #载入 xlsx 包,以便读取 xlsx 类型的数据
+setwd("/Users/shine/Documents/funcational\ data/m-a")
+ali<-read.xlsx(file="bat收购-1222.xlsx",header=T,sheetIndex=1)#读取路径中的数据,sheet1是阿里
+attach(ali) ##use attach to make the variables accessible by name within the R session
+names(ali) ##use names to get a list of the variable names
+head(ali)#看数据的前几行
+tail(ali)#看后几行
+```
+阿里的这张数据表中，50行以后、第18列是无用的
+```{r}
+ali<-ali[1:49,1:17]
+head(ali)
+tail(ali)#原本用ddd<-dd[1:50,1:17]发现最后一行为空，可能是因为之前用了attach，将第一行作为了变量名，因此修改成49
+```
+三种对被并购方的分类，观察哪种分类更合适
+```{r}
+summary(ali$行业.证监会.)
+summary(ali$行业.国标.)
+summary(ali$行业.清科.)
+#结论：清科的能够真正反映被并购方的主营业务或商业模式，另外两种分类过于模糊
+```
+只需要并购『已完成』的数据，删去未完成的样本点
+```{r}
+ali<-subset(ali,并购状态 == "已完成")
+head(ali)
+tail(ali)
+```
+按时间排序并购事件,并只保留到月度或年度
+```{r}
+#雅虎的数据格式有错误,[32]，是2005-08-05；天宏基金收购结束时间未知，[17]，这里用开始时间代替2013-10-19.此处已手动在excel文件中修改
+date = as.Date(ali$并购结束时间,"%Y")
+date = format(date, format = "%Y")#format里面的日期格式见《R语言实战》73页
+date
+ali<-cbind(ali,date)##把date这一列加入到aa中
+ali<-ali[order(ali$并购结束时间),]
+```
+
+处理完毕，下面开始分析。
+按年度计数并购事件，并画图
+```{r}
+table(ali$date)
+plot(ali$date)
+```
