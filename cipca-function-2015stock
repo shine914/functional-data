@@ -1,0 +1,327 @@
+###=== Coding Illustration ===###
+# Input an interval data frame or what can be transformed into an interval data
+# frame, then output the solution of CIPCA, including vectors and accumulative
+# contribution rates of principal components and projection on principal component
+# plane, moreover, if required, publish images of solution, including projection
+# of variables and interval samples on principal factor plane.
+
+###=== Functions Illustration ===###
+##-- choosing --##
+#-- See further in choosing.R.
+##-- mapping --##
+#-- See further in mapping.R.
+##-- interval --##
+#-- Transform sample data frame into interval data frame with classes in certian
+#   column, where intervals are recorded two matrixes, the lower and upper bounds.
+# x: interval data frame prepared to use;
+# class: location of class variable, default is the 1st column;
+# is.map: whether record corresponding relation 'Mapping', default is TRUE.
+##-- cipca.exchange --##
+#-- Exchange the lower and upper bounds of interval samples if components of 
+#   principal component are negative.
+# x: lower bound of interval data;
+# y: upper bound of interval data;
+# u: given principal component.
+##-- scree --##
+#-- See further in pca.R.
+##-- plane --##
+#-- See further in pca.R.
+##-- project.cipca --##
+#-- Publish PC Scores of interval samples.
+# lower: lower bound of interval data;
+# upper: upper bound of interval data;
+# type: type of figures, default is 'both';
+# $ 'interval': a rectangle representatives a hyper-interval;
+# $ 'cross': a cross representatives a hyper-interval;
+# h.flip: whether flip horizontal, default is FALSE;
+# v.flip: whether flip vertica, default is FALSE.
+##-- cipca --##
+#-- Do as Coding Illustration says.
+# x: interval data frame or what can be transformed into one;
+# type: type of x, default is 'data';
+# $ 'data': x is an original data frame;
+# $ 'interval': x is an interval data frame;
+# pc.num: number of PCs prepared to compute, default means all;
+# is.scree: whether do scree(), default is FALSE;
+# is.plane: whether do plane(), default is FALSE;
+# is.project: whether do project.cipca(), default is FALSE.
+
+###=== Result Illustration ===###
+# Data: data frame prepared to transform;
+# $ ...
+# Data.ori: original data frame;
+# $ ...
+# Data.file: filename of original data frame;
+# Data.interval: solution of interval();
+# $ Lower: lower bounds of interval samples;
+# $ Upper: upper bounds of interval samples;
+# Data.label: label of variables prepared to use;
+# Mapping: corresponding relation of facors of given classified variable;
+# $ Variable: label of classified variable;
+# $ Mapping: corresponding relation of factors;
+# Solve.cipca: solution of cipca();
+# $ CCR: information of accumulated contribution rate;
+# $ Rotation: correlation coefficients;
+# $ Lower.score: lower bound of PC scores;
+# $ Upper.score: upper bound of PC scores;
+# choosing: defined function;
+# cipca: defined function;
+# cipca.exchange: defined function;
+# interval: defined function;
+# mapping: defined function;
+# plane: defined function;
+# project.cipca: defined function;
+# scree: defined function.
+
+###=== Coding Content ===###
+rm(list=ls())  #empty global environment
+library('plotrix')  #'install.packages('plotrix') when first use
+##-- Function choosing --##
+choosing=function(x,set=1:ncol(x),which=set[1]){
+  if (is.character(set) && is.numeric(which))
+    which=colnames(x)[which]
+  else if (is.numeric(set) && is.character(which))
+    set=colnames(x)[set]
+  set=c(which,set[set!=which])
+  return(x[,set])
+}
+##-- Function mapping --##
+mapping=function(x,which=1){
+  map=cbind(as.character(sort(unique(x[,which]))),
+            sort(unique(x[,which])))
+  rownames(map)=1:nrow(map)
+  colnames(map)=c('Former','Latter')
+  x[,which]=as.numeric(x[,which])
+  return(list(Variable=colnames(x)[which],
+              Mapping=map,
+              Data=x))
+}
+##-- Function interval --##
+interval=function(x,class=1,is.map=TRUE){
+  #- create Mapping -#
+  map=mapping(x,which=class)  #corresponding relation
+  # publish Mapping #
+  if (is.map)
+    Mapping<<-list(Variable=map$Variable,
+                   Mapping=map$Mapping)
+  #- transform samples into intervals -#
+  x=map$Data  #modified data frame
+  n=nrow(map$Mapping)  #number of intervals
+  p=ncol(x)-1  #number of variables
+  # create lower and upper bounds of intervals one location after another #
+  low=matrix(nrow=n,ncol=p)  #preinstall lower bound matrix
+  up=matrix(nrow=n,ncol=p)  #preinstall upper bound matrix
+  for (i in 1:n)
+    for (j in 1:p){
+      low[i,j]=quantile(x[x[,class]==i,j+1],probs=0.25,na.rm=TRUE)
+      up[i,j]=quantile(x[x[,class]==i,j+1],probs=0.75,na.rm=TRUE)
+    }
+  colnames(low)=colnames(x)[-1]  #column label of lower bound
+  rownames(low)=map$Mapping[,1]  #row label of lower bound
+  colnames(up)=colnames(x)[-1]  #column label of upper bound
+  rownames(up)=map$Mapping[,1]  #row label of upper bound
+  #- returned value -#
+  return(list(Lower=low,
+              Upper=up))
+}
+##-- Function cipca.exchange --##
+cipca.exchange=function(x,y,u){
+  #- check plus or minus characteristic of component one by one -#
+  for (k in 1:ncol(x)){
+    if (u[k]<0){
+      tmp=x[,k]
+      x[,k]=y[,k]
+      y[,k]=tmp
+    }
+  }
+  #- returned value -#
+  return(list(low=x,
+              up=y))
+}
+##-- Function scree --##
+scree=function(x){
+  png('Scree Plot.png',width=900,height=720)
+  plot(1:length(x),x,main='Scree Plot',xlab='',ylab='Eigenvalues',
+       pch=16,bty='l',axes=FALSE,type='b')
+  axis(side=1)
+  axis(side=2)
+  dev.off()
+  print('Scree Plot.png is now in work directory.')
+}
+##-- Function plane --##
+plane=function(x,rate=NULL,h.flip=FALSE,v.flip=FALSE){
+  if (h.flip)
+    x[,1]=-x[,1]
+  if (v.flip)
+    x[,2]=-x[,2]
+  png('Principal Factors Plane.png',width=900,height=720)
+  if (is.null(rate))
+    plot(x[,1:2],pch=16,main='Principal Factors Plane',xlab='PC1',ylab='PC2',
+         xlim=c(-1,1),ylim=c(-1,1),xaxs='i',yaxs='i',xaxt='n',yaxt='n')
+  else
+    plot(x[,1:2],pch=16,main='Principal Factors Plane',
+         xlab=paste('PC1(',round(rate[1],4)*100,'%)',sep=''),
+         ylab=paste('PC2(',round(rate[2],4)*100,'%)',sep=''),
+         xlim=c(-1,1),ylim=c(-1,1),xaxs='i',yaxs='i',xaxt='n',yaxt='n')
+  axis(side=1,at=c(-1,0,1))
+  axis(side=2,at=c(-1,0,1))
+  abline(v=0,lty=3)
+  abline(h=0,lty=3)
+  draw.ellipse(0,0,lty=3)
+  text(x[,1:2],pos=4,rownames(x))
+  dev.off()
+  print('Principal Factors Plane.png is now in work directory.')
+}
+##-- Function project.cipca --##
+project.cipca=function(lower,upper,type='both',h.flip=FALSE,v.flip=FALSE){
+  #- coordinate axises flip -#
+  if (h.flip){
+    tmp=lower[,1]
+    lower[,1]=-upper[,1]
+    upper[,1]=-tmp
+  }
+  if (v.flip){
+    tmp=lower[,2]
+    lower[,2]=-upper[,2]
+    upper[,2]=-tmp
+  }
+  n=nrow(lower)  #number of samples
+  #- range of principal components -#
+  min.pc1=floor(min(lower[,1]))  #minimum of PC1
+  max.pc1=ceiling(max(upper[,1]))  #maximum of PC1
+  min.pc2=floor(min(lower[,2]))  #minimum of PC2
+  max.pc2=ceiling(max(upper[,2]))  #maximum of PC2
+  #- put vertexes of intervals in rows -#
+  edge=rbind(lower[,1:2],  #left lower vertex
+             cbind(upper[,1],lower[,2]),  #right lower vertex
+             upper[,1:2],  #right upper vertex
+             cbind(lower[,1],upper[,2]))  #left upper vertex
+  #- interval projection plot -#
+  if (type=='both' || type=='interval'){
+    png('PC Scores of Interval Samples(Interval).png',width=900,height=720)
+    # preinstall coordinate system #
+    plot(0,0,col=0,main='PC Scores of Samples',
+         xlim=c(min.pc1,max.pc1+3),ylim=c(min.pc2,max.pc2),
+         xaxt='n',yaxt='n',bty='l',xlab='Scores of PC1',ylab='Scores of PC2')
+    axis(side=1,at=min.pc1:(max.pc1+3))  #plot x coordinate axis
+    axis(side=2,at=min.pc2:max.pc2)  #plot y coordinate axis
+    # plot boundary #
+    tmp=rbind(edge,edge[1:n,])  #route of ploting boundary
+    ##shan:define the color list in the specific case,redefine all the"col"parameter below
+    #such as "col=color[i]"instead of "col = i","col = color" instead of "col = 1:n
+    color<-c("firebrick2","deeppink1","hotpink1","goldenrod2",
+             "gold","khaki1","dodgerblue4","dodgerblue2","deepskyblue")
+    ##
+    for (i in 1:n)
+      for (j in 1:4)
+        segments(tmp[n*(j-1)+i,1],tmp[n*(j-1)+i,2],
+                 tmp[n*j+i,1],tmp[n*j+i,2],col=color[i],lwd=3)
+    ##col=i
+    op=par(mar=c(5,4,4,5),pty='s')
+    legend(max.pc1,max.pc2,legend=rownames(lower),xpd=TRUE,
+           col=color,lty=1,lwd=3,bty='n')  #label of samples ##original col=1:n
+    par(op)
+    dev.off()
+  }
+  #- cross projection plot -#
+  if (type=='both' || type=='cross'){
+    png('PC Scores of Interval Samples(Cross).png',width=900,height=720)
+    # preinstall coordinate system #
+    plot(0,0,col=0,main='PC Scores of Samples',
+         xlim=c(min.pc1,max.pc1+3),ylim=c(min.pc2,max.pc2),
+         xaxt='n',yaxt='n',bty='l',xlab='Scores of PC1',ylab='Scores of PC2')
+    axis(side=1,at=min.pc1:(max.pc1+3))  #plot x coordinate axis
+    axis(side=2,at=min.pc2:max.pc2)  #plot y coordinate axis
+    # plot centers of crosses #
+    center=(lower+upper)/2  #centers of crosses
+    points(center,pch=16,col=color)  #plot centers of crosses ##3originalcol=1:n
+    # plot crosses #
+    for (i in 1:n){
+      # horizontal line #
+      segments(lower[i,1],center[i,2],upper[i,1],center[i,2],col=color[i],lwd=3)#3originalcol
+      # vertical line #
+      segments(center[i,1],lower[i,2],center[i,1],upper[i,2],col=color[i],lwd=3)#3originalcol
+    }
+    op=par(mar=c(5,4,4,5),pty='s')
+    legend(max.pc1,max.pc2,legend=rownames(lower),xpd=TRUE,
+           col=color,lty=1,lwd=3,bty='n')  #label of samples #originalcol
+    par(op)
+    dev.off()
+  }
+  #- presentation -#
+  print('PC Scores of Interval Samples.png is in work directory.')
+}
+##-- Function cipca --##
+cipca=function(x,type='data',pc.num=NULL,
+               is.scree=FALSE,is.plane=FALSE,is.project=FALSE){
+  #- check ??type?? -#
+  if (type=='data')
+    x=interval(x)
+  #- acquire original lower and upper bounds -#
+  low.ori=x$Lower  #oringinal lower bound
+  up.ori=x$Upper  #oringinal upper bound
+  #- calculate means of interval variables
+  mean.ori=(low.ori+up.ori)/2  #means of interval samples
+  mean.variable=colMeans(mean.ori)  #means of interval variables
+  n=nrow(low.ori)  #number of samples
+  p=ncol(low.ori)  #number of variables
+  #- check 'is.null' -#
+  if (is.null(pc.num))
+    pc.num=p  #choose all principal components
+  tmp=rep(1,time=n)
+  #- centralization -#
+  low=low.ori-tmp%o%mean.variable  #centralization of lower bound
+  up=up.ori-tmp%o%mean.variable  #centralization of upper bound
+  #- variances of variables
+  var.variable=colSums((low^2+low*up+up^2)/3)
+  #- standardization -#
+  low=low*((tmp%o%var.variable)/n)^(-1/2)  #standardization of lower bound
+  up=up*((tmp%o%var.variable)/n)^(-1/2)  #standardization of upper bound
+  #- create correlation coefficient matrix -#
+  tmp=low+up
+  covariance=diag(rep(n/2,time=p))  #create matrix and add diagonal elements
+  # calculate correlation coefficient among variables #
+  for (j in 1:(p-1))
+    for (k in (j+1):p)
+      covariance[j,k]=t(tmp[,j])%*%tmp[,k]/4
+  # acquire complete matrix via transposition #
+  covariance=(covariance+t(covariance))/n
+  #- eigenvalues and eigenvectors -#
+  e=eigen(covariance)
+  #- information of accumulated contribution rate -#
+  cr=e$values/sum(e$values)  #contribution rate
+  ccr=cbind(e$values,cr,cumsum(cr))  #accumulated contribution rate
+  colnames(ccr)=c('Eigenvalues','CR','CCR')  #column label
+  rownames(ccr)=1:p  #row label
+  #- principal component scores of interval samples -#
+  low.score=matrix(nrow=n,ncol=pc.num)  #preinstall matrix of scores of lower bound
+  up.score=low.score  #preinstall matrix of scores of upper bound
+  # calculate scores of bounds one principal component after another #
+  for (j in 1:pc.num){
+    tmp=cipca.exchange(low,up,e$vectors[,j])  #check plus or minus characteristic
+    low.score[,j]=tmp$low%*%e$vectors[,j]  #scores of lower bound
+    up.score[,j]=tmp$up%*%e$vectors[,j]  #scores of upper bound
+  }
+  colnames(low.score)=paste('PC',1:pc.num,sep='')  #column label
+  rownames(low.score)=rownames(low.ori)  #row label
+  colnames(up.score)=paste('PC',1:pc.num,sep='')  #column label
+  rownames(up.score)=rownames(up.ori)  #row label
+  #- calculate correlation coefficients with principal components -#
+  corr=e$vectors[,1:pc.num]*(rep(1,time=p)%o%e$values[1:pc.num])^(1/2)
+  colnames(corr)=paste('PC',1:pc.num,sep='')  #column label
+  rownames(corr)=colnames(low.ori)  #row label
+  #- scree plot -#
+  if (is.scree)
+    scree(x=ccr[,1])
+  #- principal component plane figure -#
+  if (is.plane)
+    plane(x=corr,ratio=cr)
+  #- principal scores of samples -#
+  if (is.project)
+    project.cipca(lower=low.score,upper=up.score)
+  #- returned value -#
+  return(list(CCR=ccr,
+              Rotation=corr,
+              Lower.score=low.score,
+              Upper.score=up.score))
+}
