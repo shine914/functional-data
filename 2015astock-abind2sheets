@@ -1,0 +1,14 @@
+setwd("/Users/shine/Desktop/社会脑/shine\'s\ research/A股市场分析");#设置数据输入与输出的路径
+library(xlsx);#载入xlsx包，以便读取xlsx类型的数据
+dd<-read.xlsx(file="全部A股运行情况指标2015-new.xlsx",header=T,sheetIndex=1);#指标
+dd1<-read.xlsx(file="股票风格统计2015.xlsx",header=T,sheetIndex=1);#分类
+
+library('data.table')
+dd<-data.table(dd)
+dd1<-data.table(dd1)
+
+#合并两张表
+library('dplyr')
+astock<-left_join(dd,dd1,by = "股票代码")
+write.xlsx(data.frame(astock),"astock.xlsx",col.names = TRUE)
+
