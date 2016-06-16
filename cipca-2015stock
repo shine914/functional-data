@@ -1,0 +1,24 @@
+##-- Functions Running --##
+#setwd("/Users/shine/Desktop/社会脑/shine\'s\ research/A股市场分析");#设置数据输入与输出的路径
+setwd("/Users/shine/Desktop/社会脑/shine\'s\ research/A股市场分析/stocknaomit-only6")
+#Data.file='stock_naomit.txt'  #filename of original data frame,
+Data.file='stock_naomit-only6.txt'  
+#经常会出现多字节字符串有错的问题，解决方案是存成txt,变量名尽量英文，并read.table中给定分隔符形式和编码方式
+Data.ori=read.table(Data.file,header=T,sep="\t",fileEncoding="UTF-16")  #load original data frame
+#Data.ori=read.table(Data.file,header=T)  #load original data frame
+#Data.ori=read.csv(Data.file,header=TRUE) 
+Data.label=c('TURNOVER','VARIATION','PE','VALUE','RETURN','STLYE')  #label of variables
+Data=choosing(Data.ori,set=Data.label,which='STLYE')  #data frame prepare to use
+Data.interval=interval(Data)  #interval() runs
+Solve.cipca=cipca(Data.interval,type='interval')  #cipca() runs
+scree(Solve.cipca$CCR[,1])  #scree() runs
+plane(Solve.cipca$Rotation,Solve.cipca$CCR[,2],h.flip=TRUE)  #plane() runs
+project.cipca(Solve.cipca$Lower.score,Solve.cipca$Upper.score,
+              type='both',h.flip=TRUE)  #project.cipca() runs
+
+
+##把各个变量的区间数提取出来####
+library(plyr)
+inter <- ldply (Data.interval,data.frame)#纵列序号依次是 大盘成长型、大盘价值型、大盘平衡型、小盘成长型、小盘价值型、小盘平衡型、中盘成长型、中盘价值型、中盘平衡型
+library(xlsx)
+write.xlsx(data.frame(inter),"stock_interval.xlsx",col.names = TRUE)
