@@ -1,0 +1,38 @@
+setwd("/Users/shine/Desktop/社会脑/shine\'s\ research/A股市场分析");#设置数据输入与输出的路径
+
+library(xlsx);#载入xlsx包，以便读取xlsx类型的数据
+astock<-read.xlsx(file="astock.xlsx",header=T,sheetIndex=1)
+
+stock<-na.omit(astock)#删除不完整的观测
+write.xlsx(data.frame(stock),"stock_naomit.xlsx",col.names = TRUE)
+
+stock_naomit<-read.xlsx(file="stock_naomit.xlsx",header=T,sheetIndex=1)#2015年2229只无缺失值股票
+
+#投资风格频数表
+library('data.table')
+style_table<-data.table(table(stock_naomit$股票风格))
+write.xlsx(data.frame(style_table),"style_table2015.xlsx")
+
+
+###普通数据主成分分析
+
+library(psych)
+stock_pca<-cbind(stock_naomit[,3:4],stock_naomit[,6:8],stock_naomit[,14],stock_naomit[,18])
+colnames(stock_pca) <- c("stock_id", "stock_title", "turnover","vibration","PE","ROR","style")
+#plot.new()
+#fa.parallel(stock_pca[,3:6], fa="PC", n.iter=100,   #基于观测特征值的碎石图检验，根据100个随机数据矩阵推导出来的特征值均值，以及大于1的特征值准则
+           # show.legend=FALSE, main="Scree plot with parallel analysis")
+
+pc<-principal(stock_pca[,3:6], nfactors = 2, score = T, rotate = "varimax")#nfactors指定主成分个数，rotate指定旋转的方法(“none”或“varimax”)，scores为是否需要计算主成分得分(“T”或”F”)。
+pc
+round(unclass(pc$weights),2)   ## 获取主成分得分的系数。
+#biplot(pc)#样本点在两个主成分上的得分
+#factor.plot(pc, labels = (pc$loadings))
+
+
+
+#几个简单的相关系数
+aa<-read.xlsx(file = "股票交易规模2015-now.xlsx",header= TRUE,sheetIndex = 3)
+cor(aa$成交金额.亿元.,aa$新开户人数)
+cor(aa$换手率,aa$新开户人数)
+
