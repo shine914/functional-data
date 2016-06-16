@@ -1,0 +1,73 @@
+##radar plot
+
+##function radar in stock index interval##
+interval_radar=function(interval_variable){
+# X <- c("大盘成长型","大盘价值型","大盘平衡型","小盘成长型","小盘价值型","小盘平衡型","中盘成长型","中盘价值型","中盘平衡型")
+X <- c("large-cap growth","large-cap value","large-cap balance","small-cap growth",
+       "small-cap value","small-cap balance","mid-cap growth","mid-cap value","mid-cap balance")
+lower <- interval_variable[1:9,2]
+upper <- interval_variable[10:18,2]
+group.names <- c("lower", "upper")
+ddf.lower <- data.frame(matrix(c(rep(group.names[1], 9), X), nrow = 9, ncol = 2), var.order = seq(1:9), value = lower)#9是9种类型的股票，也就是9个雷达方向
+ddf.upper <- data.frame(matrix(c(rep(group.names[2], 9), X), nrow = 9, ncol = 2), var.order = seq(1:9), value = upper)
+ddf <- rbind(ddf.lower, ddf.upper)
+colnames(ddf) <- c("upperorlower", "X", "var.order", "var.value")
+library(ggplot2)
+# ggplot(ddf, aes(y = var.value, x = reorder(X, var.order),
+#                 group = upperorlower, colour = upperorlower))+
+#   coord_polar()+ 
+#   geom_path()+
+#   geom_point()+
+#   labs(title = "Stock Style Analysis")
+##这个图画出来极坐标型，线是弯曲的
+coord_radar <- function (theta = "x", start = 0, direction = 1) 
+{
+  theta <- match.arg(theta, c("x", "y"))
+  r <- if (theta == "x") 
+    "y"
+  else "x"
+  ggproto("CordRadar", CoordPolar, theta = theta, r = r, start = start, 
+          direction = sign(direction),
+          is_linear = function(coord) TRUE)
+}
+
+ggg<-ggplot(ddf, aes(y = var.value, x = reorder(X, var.order)))+
+  geom_polygon(aes(group = upperorlower, colour = upperorlower), fill = NA, size = 2, show.legend = FALSE) +
+  geom_line(aes(group = upperorlower, colour = upperorlower), size = 2) + ##size是线的粗细
+  theme(strip.text.x = element_text(size = rel(1)),
+        axis.text.x = element_text(size = rel(1)), #size是坐标轴字母大小
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  xlab("") + ylab("") +
+  guides(color = guide_legend(ncol=2)) +
+  coord_radar()
+return(ggg)
+}
+######################
+
+#draw and save image
+interval.file='stock_interval-radarplot.txt'  
+#经常会出现多字节字符串有错的问题，解决方案是存成txt,变量名尽量英文，并read.table中给定分隔符形式和编码方式
+interval.ori=read.table(interval.file,header=T,sep="\t",fileEncoding="UTF-16")  #load original data frame
+#Data.ori=read.table(Data.file,header=T)  #load original data frame
+#Data.ori=read.csv(Data.file,header=TRUE) 
+
+interval_TURNOVER=subset.data.frame(interval.ori,select = c(.id,TURNOVER)) 
+TURNOVER_radar<-interval_radar(interval_TURNOVER)+labs(title = "TURNOVER")
+ggsave(TURNOVER_radar, file = "TURNOVER.png")
+
+interval_VARIATION=subset.data.frame(interval.ori,select = c(.id,VARIATION))
+VARIATION_radar<-interval_radar(interval_VARIATION)+labs(title = "VARIATION")
+ggsave(VARIATION_radar, file = "VARIATION.png")
+
+interval_PE=subset.data.frame(interval.ori,select = c(.id,PE))
+PE_radar<-interval_radar(interval_PE)+labs(title = "PE")
+ggsave(PE_radar, file = "PE.png")
+
+interval_VALUE=subset.data.frame(interval.ori,select = c(.id,VALUE)) 
+VALUE_radar<-interval_radar(interval_VALUE)+labs(title = "VALUE")
+ggsave(VALUE_radar, file = "VALUE.png")
+
+interval_RETURN=subset.data.frame(interval.ori,select = c(.id,RETURN)) 
+RETURN_radar<-interval_radar(interval_RETURN)+labs(title = "RETURN")
+ggsave(RETURN_radar, file = "RETURN.png")
