@@ -1,0 +1,70 @@
+
+##合并投资风格和指标#
+setwd("/Users/shine/Desktop/社会脑/shine\'s\ research/A股市场分析/2016-1");#设置数据输入与输出的路径
+library(xlsx)
+dd<-read.xlsx(file="2016period1.xlsx",header=T,sheetIndex=1);                #####已手动更改变量名称TURNOVER','VARIATION','PE','VALUE','RETURN','STYLE'，更改文件名
+
+dd1<-read.xlsx(file="股票风格统计2015.xlsx",header=T,sheetIndex=1);#分类
+
+library('data.table')
+dd<-data.table(dd)
+dd<-subset(dd, select = c('证券代码','证券简称','TURNOVER','VARIATION','PE','VALUE','RETURN'))
+dd1<-data.table(dd1)
+dd1<-subset(dd1, select = c('证券代码','STYLE'))
+library('dplyr')
+astock<-left_join(dd,dd1,by = "证券代码")
+
+#na.omit
+stock<-na.omit(astock)#删除不完整的观测
+
+stock<-subset(stock, STYLE == "大盘成长型"|STYLE == "大盘价值型"|STYLE == "大盘平衡型"|
+              STYLE == "小盘成长型"|STYLE == "小盘价值型"|STYLE == "小盘平衡型" |
+              STYLE == "中盘成长型"|STYLE == "中盘价值型"|STYLE == "中盘平衡型") #这个数据集中style一列用na.omit删不干净
+
+stock<- within(stock,{
+  STYLE1<-NA
+  STYLE1[STYLE == "大盘成长型"]<-"large-cap growth"
+  STYLE1[STYLE == "大盘价值型"]<-"large-cap value"
+  STYLE1[STYLE == "大盘平衡型"]<-"large-cap balance"
+  STYLE1[STYLE == "小盘成长型"]<-"small-cap growth"
+  STYLE1[STYLE == "小盘价值型"]<-"small-cap value"
+  STYLE1[STYLE == "小盘平衡型"]<-"small-cap balance"
+  STYLE1[STYLE == "中盘成长型"]<-"mid-cap growth"
+  STYLE1[STYLE == "中盘价值型"]<-"mid-cap value"
+  STYLE1[STYLE == "中盘平衡型"]<-"mid-cap balance"}) #防止作图显示问题，改成英文
+
+library(reshape)
+stock<-rename(stock, c(STYLE = "STYLE-CH"))
+stock<-rename(stock, c(STYLE1 = "STYLE")) #把变量名称交换一下，确保英文style与后面代码一致
+ 
+write.xlsx(data.frame(stock),"2016-1.xlsx",col.names = TRUE)        ####导出预处理后的数据，更改文件名,这里需要手动更改格式txt,utf-16制式
+
+# #投资风格频数表
+# library('data.table')
+# style_table<-data.table(table(stock$STYLE))
+# write.xlsx(data.frame(style_table),"style_table2015-1.xlsx")        ####导出频数表，更改文件名
+
+##run the cipca function
+#cipca
+Data.file='2016-1.txt'                                              ####更改文件名
+
+Data.ori=read.table(Data.file,header=T,sep="\t",fileEncoding="UTF-16")  
+#Data.ori=read.table(Data.file,header=T)  #load original data frame
+#Data.ori=read.csv(Data.file,header=TRUE) 
+Data.label=c('TURNOVER','VARIATION','PE','VALUE','RETURN','STYLE')  #label of variables
+Data=choosing(Data.ori,set=Data.label,which='STYLE')  #data frame prepare to use
+Data.interval=interval(Data)  #interval() runs
+Solve.cipca=cipca(Data.interval,type='interval')  #cipca() runs
+scree(Solve.cipca$CCR[,1])  #scree() runs
+plane(Solve.cipca$Rotation,Solve.cipca$CCR[,2],h.flip=TRUE)  #plane() runs
+project.cipca(Solve.cipca$Lower.score,Solve.cipca$Upper.score,
+              type='both',h.flip=TRUE)  #project.cipca() runs  
+                                                                    ###要手动更改输出图片的名称，或更改文件夹
+
+##把各个变量的区间数提取出来####
+library(plyr)
+inter <- ldply (Data.interval,data.frame)
+#纵列序号依次是(与输出的主成分图一致)，"large-cap balance"，“large-cap growth"，"large-cap value"，"mid-cap balance"，"mid-cap growth"，"mid-cap value"，"small-cap balance"，"small-cap growth"，"small-cap value"
+library(xlsx)
+write.xlsx(data.frame(inter),"2016-1_interval.xlsx",col.names = TRUE)     ####更改文件名,手动另存为txt
+
